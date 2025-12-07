@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/JonasProgrammer/docker-machine-driver-hetzner/driver"
+	"github.com/CosmoAbdon/docker-machine-driver-hetzner/internal/driver"
 	"github.com/docker/machine/libmachine/drivers/plugin"
 )
 

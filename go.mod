@@ -1,4 +1,4 @@
-module github.com/JonasProgrammer/docker-machine-driver-hetzner
+module github.com/CosmoAbdon/docker-machine-driver-hetzner
 
 go 1.24.0
 
@@ -6,7 +6,6 @@ require (
 	github.com/docker/machine v0.16.2
 	github.com/hetznercloud/hcloud-go/v2 v2.32.0
 	golang.org/x/crypto v0.45.0
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 replace github.com/codegangsta/cli v1.22.14 => github.com/urfave/cli v1.22.14
