@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/docker/machine/libmachine/state"
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
+	"go.yaml.in/yaml/v2"
 )
 
 func (d *Driver) waitForRunningServer() error {
@@ -101,16 +103,85 @@ func (d *Driver) makeCreateServerOptions() (*hcloud.ServerCreateOpts, error) {
 }
 
 func (d *Driver) getUserData() (string, error) {
-	file := d.userDataFile
-	if file == "" {
-		return d.userData, nil
+	var baseUserData string
+
+	if d.userDataFile != "" {
+		readUserData, err := os.ReadFile(d.userDataFile)
+		if err != nil {
+			return "", fmt.Errorf("could not read user data file: %w", err)
+		}
+		baseUserData = string(readUserData)
+	} else {
+		baseUserData = d.userData
 	}
 
-	readUserData, err := os.ReadFile(file)
-	if err != nil {
-		return "", err
+	if d.additionalUserData == "" {
+		return baseUserData, nil
 	}
-	return string(readUserData), nil
+
+	if baseUserData == "" {
+		return d.additionalUserData, nil
+	}
+
+	merged, err := mergeUserData(baseUserData, d.additionalUserData)
+	if err != nil {
+		return "", fmt.Errorf("could not merge user data: %w", err)
+	}
+	return merged, nil
+}
+
+func mergeUserData(base, additional string) (string, error) {
+	var baseMap, additionalMap map[string]interface{}
+
+	baseContent := strings.TrimPrefix(base, "#cloud-config\n")
+	additionalContent := strings.TrimPrefix(additional, "#cloud-config\n")
+
+	if err := yaml.Unmarshal([]byte(baseContent), &baseMap); err != nil {
+		return "", fmt.Errorf("could not parse base user data as YAML: %w", err)
+	}
+
+	if err := yaml.Unmarshal([]byte(additionalContent), &additionalMap); err != nil {
+		return "", fmt.Errorf("could not parse additional user data as YAML: %w", err)
+	}
+
+	if baseMap == nil {
+		baseMap = make(map[string]interface{})
+	}
+
+	mergeYAMLMaps(baseMap, additionalMap)
+
+	merged, err := yaml.Marshal(baseMap)
+	if err != nil {
+		return "", fmt.Errorf("could not serialize merged user data: %w", err)
+	}
+
+	return "#cloud-config\n" + string(merged), nil
+}
+
+func mergeYAMLMaps(base, additional map[string]interface{}) {
+	for key, additionalValue := range additional {
+		baseValue, exists := base[key]
+		if !exists {
+			base[key] = additionalValue
+			continue
+		}
+
+		baseSlice, baseIsSlice := baseValue.([]interface{})
+		additionalSlice, additionalIsSlice := additionalValue.([]interface{})
+		if baseIsSlice && additionalIsSlice {
+			base[key] = append(additionalSlice, baseSlice...)
+			continue
+		}
+
+		baseMap, baseIsMap := baseValue.(map[string]interface{})
+		additionalMap, additionalIsMap := additionalValue.(map[string]interface{})
+		if baseIsMap && additionalIsMap {
+			mergeYAMLMaps(baseMap, additionalMap)
+			continue
+		}
+
+		base[key] = additionalValue
+	}
 }
 
 func (d *Driver) createNetworks() ([]*hcloud.Network, error) {

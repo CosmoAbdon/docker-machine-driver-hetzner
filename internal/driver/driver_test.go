@@ -309,3 +309,106 @@ func assertMutualExclusion(t *testing.T, err error, flag1, flag2 string) {
 		t.Errorf("expected mutually exclusive flags to fail, but message differs: %v %v %v", flag1, flag2, errstr)
 	}
 }
+
+func TestAdditionalUserData(t *testing.T) {
+	tests := []struct {
+		name               string
+		baseUserData       string
+		additionalUserData string
+		wantContains       []string
+	}{
+		{
+			name:               "only additional user data",
+			baseUserData:       "",
+			additionalUserData: "#cloud-config\npackages:\n  - vim",
+			wantContains:       []string{"packages:", "vim"},
+		},
+		{
+			name:               "only base user data",
+			baseUserData:       "#cloud-config\npackages:\n  - git",
+			additionalUserData: "",
+			wantContains:       []string{"packages:", "git"},
+		},
+		{
+			name:               "merge packages lists",
+			baseUserData:       "#cloud-config\npackages:\n  - git",
+			additionalUserData: "#cloud-config\npackages:\n  - vim",
+			wantContains:       []string{"packages:", "vim", "git"},
+		},
+		{
+			name:               "merge runcmd lists",
+			baseUserData:       "#cloud-config\nruncmd:\n  - echo base",
+			additionalUserData: "#cloud-config\nruncmd:\n  - echo additional",
+			wantContains:       []string{"runcmd:", "echo base", "echo additional"},
+		},
+		{
+			name:               "different keys",
+			baseUserData:       "#cloud-config\npackages:\n  - git",
+			additionalUserData: "#cloud-config\nruncmd:\n  - echo hello",
+			wantContains:       []string{"packages:", "git", "runcmd:", "echo hello"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := NewDriver("test")
+			d.userData = tt.baseUserData
+			d.additionalUserData = tt.additionalUserData
+
+			result, err := d.getUserData()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			for _, want := range tt.wantContains {
+				if !strings.Contains(result, want) {
+					t.Errorf("result should contain %q, got:\n%s", want, result)
+				}
+			}
+		})
+	}
+}
+
+func TestMergeUserDataPrepends(t *testing.T) {
+	base := "#cloud-config\nruncmd:\n  - echo base"
+	additional := "#cloud-config\nruncmd:\n  - echo additional"
+
+	result, err := mergeUserData(base, additional)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	additionalIdx := strings.Index(result, "echo additional")
+	baseIdx := strings.Index(result, "echo base")
+
+	if additionalIdx == -1 || baseIdx == -1 {
+		t.Fatalf("expected both commands in result, got:\n%s", result)
+	}
+
+	if additionalIdx > baseIdx {
+		t.Errorf("additional data should be prepended, but base appears first in result:\n%s", result)
+	}
+}
+
+func TestAdditionalUserDataFlag(t *testing.T) {
+	d := NewDriver("test")
+	err := d.setConfigFromFlagsImpl(makeFlags(map[string]interface{}{
+		flagUserData:           "#cloud-config\npackages:\n  - git",
+		flagAdditionalUserData: "#cloud-config\npackages:\n  - vim",
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	data, err := d.getUserData()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(data, "git") {
+		t.Error("result should contain git")
+	}
+	if !strings.Contains(data, "vim") {
+		t.Error("result should contain vim")
+	}
+}

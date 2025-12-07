@@ -63,6 +63,7 @@ func (d *Driver) deprecatedBooleanFlag(opts drivers.DriverOptions, flag, depreca
 func (d *Driver) setUserDataFlags(opts drivers.DriverOptions) error {
 	userData := opts.String(flagUserData)
 	userDataFile := opts.String(flagUserDataFile)
+	additionalUserData := opts.String(flagAdditionalUserData)
 
 	if opts.Bool(legacyFlagUserDataFromFile) {
 		if userDataFile != "" {
@@ -72,11 +73,13 @@ func (d *Driver) setUserDataFlags(opts drivers.DriverOptions) error {
 		log.Warnf("DEPRECATED: --%s will be removed, use '--%s \"%s\"' instead", legacyFlagUserDataFromFile, flagUserDataFile, userData)
 		d.usesDfr = true
 		d.userDataFile = userData
+		d.additionalUserData = additionalUserData
 		return nil
 	}
 
 	d.userData = userData
 	d.userDataFile = userDataFile
+	d.additionalUserData = additionalUserData
 
 	if d.userData != "" && d.userDataFile != "" {
 		return d.flagFailure("--%v and --%v are mutually exclusive", flagUserData, flagUserDataFile)

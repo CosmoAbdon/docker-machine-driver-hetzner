@@ -39,8 +39,9 @@ type Driver struct {
 	dangling          []func()
 	ServerID          int64
 	cachedServer      *hcloud.Server
-	userData          string
-	userDataFile      string
+	userData           string
+	userDataFile       string
+	additionalUserData string
 	Volumes           []string
 	Networks          []string
 	UsePrivateNetwork bool
