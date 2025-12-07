@@ -46,7 +46,7 @@ func (d *Driver) makePlacementGroup(name string, labels map[string]string) (*hcl
 		d.dangling = append(d.dangling, func() {
 			_, err := d.getClient().PlacementGroup.Delete(context.Background(), grp.PlacementGroup)
 			if err != nil {
-				log.Errorf("could not delete placement group: %v", err)
+				log.Errorf("Could not delete placement group: %v", err)
 			}
 		})
 	}

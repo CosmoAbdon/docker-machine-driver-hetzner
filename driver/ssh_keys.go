@@ -63,7 +63,7 @@ func (d *Driver) copySSHKeyPair(src string) error {
 
 func (d *Driver) createRemoteKeys() error {
 	if d.KeyID == 0 {
-		log.Infof("Creating SSH key...")
+		log.Info("Creating SSH key...")
 
 		buf, err := os.ReadFile(d.GetSSHKeyPath() + ".pub")
 		if err != nil {
@@ -75,7 +75,7 @@ func (d *Driver) createRemoteKeys() error {
 			return fmt.Errorf("error retrieving potentially existing key: %w", err)
 		}
 		if key == nil {
-			log.Infof("SSH key not found in Hetzner. Uploading...")
+			logStep("SSH key not found in Hetzner, uploading...")
 
 			key, err = d.makeKey(d.GetMachineName(), string(buf), d.keyLabels)
 			if err != nil {
@@ -83,7 +83,7 @@ func (d *Driver) createRemoteKeys() error {
 			}
 		} else {
 			d.IsExistingKey = true
-			log.Debugf("SSH key found in Hetzner. ID: %d", key.ID)
+			logDebugStep("SSH key found in Hetzner [ID: %d]", key.ID)
 		}
 
 		d.KeyID = key.ID
@@ -94,17 +94,17 @@ func (d *Driver) createRemoteKeys() error {
 			return fmt.Errorf("error checking for existing key for %v: %w", pubkey, err)
 		}
 		if key == nil {
-			log.Infof("Creating new key for %v...", pubkey)
+			logStep("Creating additional key #%d...", i)
 			key, err = d.makeKey(fmt.Sprintf("%v-additional-%d", d.GetMachineName(), i), pubkey, d.keyLabels)
 
 			if err != nil {
 				return fmt.Errorf("error creating new key for %v: %w", pubkey, err)
 			}
 
-			log.Infof(" -> Created %v", key.ID)
+			logSubstep("Created key [ID: %d]", key.ID)
 			d.AdditionalKeyIDs = append(d.AdditionalKeyIDs, key.ID)
 		} else {
-			log.Infof("Using existing key (%v) %v", key.ID, key.Name)
+			logStep("Using existing key %s", logKey(key.Name, key.ID))
 		}
 
 		d.cachedAdditionalKeys = append(d.cachedAdditionalKeys, key)
@@ -114,12 +114,12 @@ func (d *Driver) createRemoteKeys() error {
 
 func (d *Driver) prepareLocalKey() error {
 	if d.originalKey != "" {
-		log.Debugf("Copying SSH key...")
+		log.Debug("Copying SSH key...")
 		if err := d.copySSHKeyPair(d.originalKey); err != nil {
 			return fmt.Errorf("could not copy ssh key pair: %w", err)
 		}
 	} else {
-		log.Debugf("Generating SSH key...")
+		log.Debug("Generating SSH key...")
 		if err := mcnssh.GenerateSSHKey(d.GetSSHKeyPath()); err != nil {
 			return fmt.Errorf("could not generate ssh key: %w", err)
 		}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/machine/libmachine/log"
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
 	"golang.org/x/crypto/ssh"
 )
@@ -186,12 +185,12 @@ func (d *Driver) waitForAction(a *hcloud.Action) error {
 			ret = <-done
 			running = false
 		case <-progress:
-			log.Debugf(" -> %s[%d]: %d %%", a.Command, a.ID, <-progress)
+			logDebugStep("Action %s: %d%%", logAction(a.Command, a.ID), <-progress)
 		}
 	}
 
 	if ret == nil {
-		log.Debugf(" -> finished %s[%d]", a.Command, a.ID)
+		logDebugStep("Action %s completed", logAction(a.Command, a.ID))
 	}
 
 	return ret
@@ -211,14 +210,14 @@ func (d *Driver) waitForMultipleActions(step string, a []*hcloud.Action) error {
 			ret = errors.Join(ret, <-watchErr)
 			cancel()
 		case <-progress:
-			log.Debugf(" -> %s: %d %%", step, <-progress)
+			logDebugStep("%s: %d%%", step, <-progress)
 		default:
 			running = false
 		}
 	}
 
 	if ret == nil {
-		log.Debugf(" -> finished %s", step)
+		logDebugStep("%s completed", step)
 	}
 
 	return ret

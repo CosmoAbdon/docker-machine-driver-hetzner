@@ -420,10 +420,10 @@ func (d *Driver) setConfigFromFlagsImpl(opts drivers.DriverOptions) error {
 	instrumented(d)
 
 	if d.usesDfr {
-		log.Warn("!!!! BREAKING-V6 !!!!")
-		log.Warn("your configuration uses deprecated flags and will stop working as-is from v5 onwards")
-		log.Warn("check preceding output for 'DEPRECATED' log statements")
-		log.Warn("!!!! /BREAKING-V6 !!!!")
+		log.Warn("========== BREAKING CHANGE WARNING ==========")
+		log.Warn("Your configuration uses deprecated flags that will be removed in v6")
+		log.Warn("Check preceding output for 'DEPRECATED' warnings")
+		log.Warn("==============================================")
 	}
 
 	return nil
@@ -448,7 +448,7 @@ func (d *Driver) PreCreateCheck() error {
 	if serverType, err := d.getType(); err != nil {
 		return fmt.Errorf("could not get type: %w", err)
 	} else if d.ImageArch != "" && serverType.Architecture != d.ImageArch {
-		log.Warnf("supplied architecture %v differs from server architecture %v", d.ImageArch, serverType.Architecture)
+		log.Warnf("Supplied architecture %v differs from server architecture %v", d.ImageArch, serverType.Architecture)
 	}
 
 	if _, err := d.getImage(); err != nil {
@@ -491,7 +491,7 @@ func (d *Driver) Create() error {
 		return err
 	}
 
-	log.Infof("Creating Hetzner server...")
+	log.Info("Creating Hetzner server...")
 
 	srvopts, err := d.makeCreateServerOptions()
 	if err != nil {
@@ -504,13 +504,13 @@ func (d *Driver) Create() error {
 		return fmt.Errorf("could not create server: %w", err)
 	}
 
-	log.Infof(" -> Creating server %s[%d] in %s[%d]", srv.Server.Name, srv.Server.ID, srv.Action.Command, srv.Action.ID)
+	logStep("Created %s, action: %s", logServer(srv.Server.Name, srv.Server.ID), logAction(srv.Action.Command, srv.Action.ID))
 	if err = d.waitForAction(srv.Action); err != nil {
 		return fmt.Errorf("could not wait for action: %w", err)
 	}
 
 	d.ServerID = srv.Server.ID
-	log.Infof(" -> Server %s[%d]: Waiting to come up...", srv.Server.Name, srv.Server.ID)
+	logStep("Waiting for %s to start...", logServer(srv.Server.Name, srv.Server.ID))
 
 	err = d.waitForInitialStartup(srv)
 	if err != nil {
@@ -522,7 +522,7 @@ func (d *Driver) Create() error {
 		return err
 	}
 
-	log.Infof(" -> Server %s[%d] ready. Ip %s", srv.Server.Name, srv.Server.ID, d.IPAddress)
+	logStep("Server %s ready at %s", logServer(srv.Server.Name, srv.Server.ID), d.IPAddress)
 	// Successful creation, so no keys dangle anymore
 	d.dangling = nil
 
@@ -575,19 +575,19 @@ func (d *Driver) Remove() error {
 		return err
 	}
 
-	// failure to remove a key is not ha hard error
+	// failure to remove a key is not a hard error
 	for i, id := range d.AdditionalKeyIDs {
-		log.Infof(" -> Destroying additional key #%d (%d)", i, id)
+		logStep("Destroying additional SSH key #%d [ID: %d]", i, id)
 		key, _, softErr := d.getClient().SSHKey.GetByID(context.Background(), id)
 		if softErr != nil {
-			log.Warnf(" ->  -> could not retrieve key %v", softErr)
+			logWarnStep("Could not retrieve key: %v", softErr)
 		} else if key == nil {
-			log.Warnf(" ->  -> %d no longer exists", id)
+			logWarnStep("Key [ID: %d] no longer exists", id)
 		}
 
 		_, softErr = d.getClient().SSHKey.Delete(context.Background(), key)
 		if softErr != nil {
-			log.Warnf(" ->  -> could not remove key: %v", softErr)
+			logWarnStep("Could not remove key: %v", softErr)
 		}
 	}
 
@@ -598,11 +598,11 @@ func (d *Driver) Remove() error {
 			return fmt.Errorf("could not get ssh key: %w", err)
 		}
 		if key == nil {
-			log.Infof(" -> SSH key does not exist anymore")
+			logStep("SSH key no longer exists")
 			return nil
 		}
 
-		log.Infof(" -> Destroying SSHKey %s[%d]...", key.Name, key.ID)
+		logStep("Destroying SSH key %s", logKey(key.Name, key.ID))
 
 		if _, err := d.getClient().SSHKey.Delete(context.Background(), key); err != nil {
 			return fmt.Errorf("could not delete ssh key: %w", err)
@@ -627,7 +627,7 @@ func (d *Driver) Restart() error {
 		return fmt.Errorf("could not reboot server: %w", err)
 	}
 
-	log.Infof(" -> Rebooting server %s[%d] in %s[%d]...", srv.Name, srv.ID, act.Command, act.ID)
+	logStep("Rebooting %s, action: %s", logServer(srv.Name, srv.ID), logAction(act.Command, act.ID))
 
 	return d.waitForAction(act)
 }
@@ -644,7 +644,7 @@ func (d *Driver) Start() error {
 		return fmt.Errorf("could not power on server: %w", err)
 	}
 
-	log.Infof(" -> Starting server %s[%d] in %s[%d]...", srv.Name, srv.ID, act.Command, act.ID)
+	logStep("Starting %s, action: %s", logServer(srv.Name, srv.ID), logAction(act.Command, act.ID))
 
 	return d.waitForAction(act)
 }
@@ -661,7 +661,7 @@ func (d *Driver) Stop() error {
 		return fmt.Errorf("could not shutdown server: %w", err)
 	}
 
-	log.Infof(" -> Shutting down server %s[%d] in %s[%d]...", srv.Name, srv.ID, act.Command, act.ID)
+	logStep("Shutting down %s, action: %s", logServer(srv.Name, srv.ID), logAction(act.Command, act.ID))
 
 	return d.waitForAction(act)
 }
@@ -678,7 +678,7 @@ func (d *Driver) Kill() error {
 		return fmt.Errorf("could not poweroff server: %w", err)
 	}
 
-	log.Infof(" -> Powering off server %s[%d] in %s[%d]...", srv.Name, srv.ID, act.Command, act.ID)
+	logStep("Powering off %s, action: %s", logServer(srv.Name, srv.ID), logAction(act.Command, act.ID))
 
 	return d.waitForAction(act)
 }

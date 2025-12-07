@@ -6,7 +6,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/docker/machine/libmachine/log"
 	"github.com/hetznercloud/hcloud-go/v2/hcloud"
 )
 
@@ -82,21 +81,21 @@ func (d *Driver) setPublicNetIfRequired(srvopts *hcloud.ServerCreateOpts) error 
 
 func (d *Driver) configureNetworkAccess(srv hcloud.ServerCreateResult) error {
 	if d.UsePrivateNetwork {
+		logStep("Waiting for private network attachment...")
 		for {
-			// we need to wait until network is attached
-			log.Infof("Wait until private network attached ...")
 			server, _, err := d.getClient().Server.GetByID(context.Background(), srv.Server.ID)
 			if err != nil {
 				return fmt.Errorf("could not get newly created server [%d]: %w", srv.Server.ID, err)
 			}
 			if server.PrivateNet != nil {
 				d.IPAddress = server.PrivateNet[0].IP.String()
+				logSubstep("Private network attached: %s", d.IPAddress)
 				break
 			}
 			time.Sleep(time.Duration(d.WaitOnPolling) * time.Second)
 		}
 	} else if d.DisablePublic4 {
-		log.Infof("Using public IPv6 network ...")
+		logStep("Configuring public IPv6 network...")
 
 		pv6 := srv.Server.PublicNet.IPv6
 		ip := pv6.IP
@@ -104,11 +103,10 @@ func (d *Driver) configureNetworkAccess(srv hcloud.ServerCreateResult) error {
 			ip[net.IPv6len-1] |= 0x01 // TODO make this configurable
 		}
 
-		ips := ip.String()
-		log.Infof(" -> resolved %v ...", ips)
-		d.IPAddress = ips
+		d.IPAddress = ip.String()
+		logSubstep("Resolved IPv6: %s", d.IPAddress)
 	} else {
-		log.Infof("Using public network ...")
+		logStep("Using public IPv4 network...")
 		d.IPAddress = srv.Server.PublicNet.IPv4.IP.String()
 	}
 	return nil

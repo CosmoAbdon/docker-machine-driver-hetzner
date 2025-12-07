@@ -21,7 +21,7 @@ func (d *Driver) removeEmptyServerPlacementGroup(srv *hcloud.Server) error {
 	}
 
 	if len(pg.Servers) > 1 {
-		log.Debugf("more than 1 servers in group, ignoring %v", pg)
+		log.Debugf("Placement group has %d servers, skipping cleanup", len(pg.Servers))
 		return nil
 	}
 
@@ -32,7 +32,7 @@ func (d *Driver) removeEmptyServerPlacementGroup(srv *hcloud.Server) error {
 		}
 		return nil
 	} else {
-		log.Debugf("group not auto-created, ignoring: %v", pg)
+		log.Debugf("Placement group not auto-created, skipping cleanup")
 		return nil
 	}
 }
@@ -48,9 +48,9 @@ func (d *Driver) destroyServer() error {
 	}
 
 	if srv == nil {
-		log.Infof(" -> Server does not exist anymore")
+		logStep("Server no longer exists")
 	} else {
-		log.Infof(" -> Destroying server %s[%d] in...", srv.Name, srv.ID)
+		logStep("Destroying %s", logServer(srv.Name, srv.ID))
 
 		res, _, err := d.getClient().Server.DeleteWithResult(context.Background(), srv)
 		if err != nil {
