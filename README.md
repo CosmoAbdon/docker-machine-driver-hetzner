@@ -9,6 +9,19 @@
 You need to create a project-specific access token under `Access` > `API Tokens` in the project control panel
 and pass that to `docker-machine create` with the `--hetzner-api-token` option.
 
+## Table of Contents
+
+- [Rancher Users](#rancher-users)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Options](#options)
+- [Building from source](#building-from-source)
+- [Development](#development)
+- [Changelog & Roadmap](#changelog--roadmap)
+- [Credits](#credits)
+- [License](#license)
+
 ## Rancher Users
 
 **If you're using this driver with Rancher**, you'll need the UI extension for a proper integration experience:
@@ -20,7 +33,11 @@ The UI extension provides:
 - Easy configuration of node pools, networks, firewalls, and more
 - Seamless integration with Rancher's cluster management
 
-Follow the installation instructions in the [UI extension repository](https://github.com/CosmoAbdon/rancher-node-driver-hetzner) to set up both the driver and the UI component.
+**Quick Setup:**
+1. Go to **Cluster Management** → **Drivers** → **Node Drivers**
+2. Click **Add Node Driver**
+3. Use the download URL from the [releases page](https://github.com/CosmoAbdon/docker-machine-driver-hetzner/releases)
+4. Follow the [UI extension setup](https://github.com/CosmoAbdon/rancher-node-driver-hetzner) for the complete experience
 
 ## Features
 
@@ -45,47 +62,34 @@ $ chmod +x docker-machine-driver-hetzner
 $ cp docker-machine-driver-hetzner /usr/local/bin/
 ```
 
-### Rancher Integration
-
-To use this driver with Rancher:
-
-1. Go to **Cluster Management** → **Drivers** → **Node Drivers**
-2. Click **Add Node Driver**
-3. Fill in the download URL for your platform from the [releases page](https://github.com/CosmoAbdon/docker-machine-driver-hetzner/releases)
-4. Set the UI component URL if available
-5. Click **Create**
-
 ## Usage
 
 ```bash
 $ docker-machine create \
   --driver hetzner \
-  --hetzner-api-token=QJhoRT38JfAUO037PWJ5Zt9iAABIxdxdh4gPqNkUGKIrUMd6I3cPIsfKozI513sy \
+  --hetzner-api-token=your-api-token-here \
   some-machine
 ```
 
 ### Using environment variables
 
 ```bash
-$ HETZNER_API_TOKEN=QJhoRT38JfAUO037PWJ5Zt9iAABIxdxdh4gPqNkUGKIrUMd6I3cPIsfKozI513sy \
+$ HETZNER_API_TOKEN=your-api-token-here \
   && HETZNER_IMAGE=ubuntu-24.04 \
   && docker-machine create \
      --driver hetzner \
      some-machine
 ```
 
-### Dealing with kernels without aufs
+### Using a custom storage driver
 
-If you use an image without aufs, like the one currently supplied with the
-debian-9 image, you can try specifying another storage driver, such as
-overlay2. Like so:
+Modern images typically use overlay2 by default. If you need a specific storage driver:
 
 ```bash
 $ docker-machine create \
   --engine-storage-driver overlay2 \
   --driver hetzner \
-  --hetzner-image debian-9 \
-  --hetzner-api-token=QJhoRT38JfAUO037PWJ5Zt9iAABIxdxdh4gPqNkUGKIrUMd6I3cPIsfKozI513sy \
+  --hetzner-api-token=your-api-token-here \
   some-machine
 ```
 
@@ -104,7 +108,7 @@ EOF
 
 $ docker-machine create \
   --driver hetzner \
-  --hetzner-api-token=QJhoRT38JfAUO037PWJ5Zt9iAABIxdxdh4gPqNkUGKIrUMd6I3cPIsfKozI513sy \
+  --hetzner-api-token=your-api-token-here \
   --hetzner-user-data="${CLOUD_INIT_USER_DATA}" \
   some-machine
 ```
@@ -116,7 +120,7 @@ You can merge additional cloud-init configuration with base user data. This is p
 ```bash
 $ docker-machine create \
   --driver hetzner \
-  --hetzner-api-token=QJhoRT38JfAUO037PWJ5Zt9iAABIxdxdh4gPqNkUGKIrUMd6I3cPIsfKozI513sy \
+  --hetzner-api-token=your-api-token-here \
   --hetzner-user-data-file=/path/to/base-config.yaml \
   --hetzner-additional-user-data="#cloud-config
 packages:
@@ -139,7 +143,7 @@ Assuming your snapshot ID is `424242`:
 ```bash
 $ docker-machine create \
   --driver hetzner \
-  --hetzner-api-token=QJhoRT38JfAUO037PWJ5Zt9iAABIxdxdh4gPqNkUGKIrUMd6I3cPIsfKozI513sy \
+  --hetzner-api-token=your-api-token-here \
   --hetzner-image-id=424242 \
   some-machine
 ```
@@ -147,7 +151,7 @@ $ docker-machine create \
 ## Options
 
 - `--hetzner-api-token`: **required**. Your project-specific access token for the Hetzner Cloud API.
-- `--hetzner-image`: The name (or ID) of the Hetzner Cloud image to use, see [Images API](https://docs.hetzner.cloud/#images-get-all-images) for how to get a list (defaults to `ubuntu-24.04`). \*Explicitly specifying an image is **strongly** recommended and will be **required from v7 onwards\***.
+- `--hetzner-image`: The name (or ID) of the Hetzner Cloud image to use, see [Images API](https://docs.hetzner.cloud/#images-get-all-images) for how to get a list (defaults to `ubuntu-24.04`). *Explicitly specifying an image is **strongly** recommended and will be **required from v3.0.0 onwards**.*
 - `--hetzner-image-arch`: The architecture to use during image lookup, inferred from the server type if not explicitly given.
 - `--hetzner-image-id`: The id of the Hetzner cloud image (or snapshot) to use, see [Images API](https://docs.hetzner.cloud/#images-get-all-images) for how to get a list (mutually excludes `--hetzner-image`).
 - `--hetzner-server-type`: The type of the Hetzner Cloud server, see [Server Types API](https://docs.hetzner.cloud/#server-types-get-all-server-types) for how to get a list (defaults to `cpx22`).
@@ -178,7 +182,7 @@ shown in the server creation UI. If server creation fails due to a failure to re
 kebab-case). As of writing, server types use lowercase (i.e. `cx21` instead of `CX21`) and locations use a three-letter abbreviation suffixed by 1
 (i.e. `fsn1` instead of `Falkenstein`).
 
-#### Image selection
+### Image selection
 
 When `--hetzner-image-id` is passed, it will be used for lookup by ID as-is. No additional validation is performed, and it is mutually exclusive with
 other `--hetzner-image*`-flags.
@@ -190,7 +194,7 @@ supplied value will take precedence.
 While there is currently a default image as fallback, this behaviour will be removed in a future version. Explicitly specifying an operating system
 image is strongly recommended for new deployments, and will be mandatory in upcoming versions.
 
-#### Existing SSH keys
+### Existing SSH keys
 
 The driver supports flexible SSH key management for different use cases:
 
@@ -232,7 +236,7 @@ The driver generates a new key pair, uploads it to Hetzner, and uses it for the 
 
 Note: The driver will attempt to delete linked keys during machine removal, unless `--hetzner-existing-key-id` was used during creation.
 
-#### Environment variables and default values
+### Environment variables and default values
 
 | CLI option                           | Environment variable               | Default                    |
 | ------------------------------------ | ---------------------------------- | -------------------------- |
@@ -267,7 +271,7 @@ Note: The driver will attempt to delete linked keys during machine removal, unle
 | `--hetzner-wait-on-polling`          | `HETZNER_WAIT_ON_POLLING`          | 1                          |
 | `--hetzner-wait-for-running-timeout` | `HETZNER_WAIT_FOR_RUNNING_TIMEOUT` | 0                          |
 
-#### Networking
+### Networking
 
 Given `--hetzner-primary-ipv4` or `--hetzner-primary-ipv6`, the driver
 attempts to set up machine creation with an existing [primary IP](https://docs.hetzner.com/cloud/servers/primary-ips/overview/)
@@ -290,7 +294,7 @@ to be given.
 
 ## Building from source
 
-Use an up-to-date version of [Go](https://golang.org/dl) (1.21+) to use Go Modules.
+Use an up-to-date version of [Go](https://golang.org/dl) (1.24+) to use Go Modules.
 
 To use the driver, you can download the sources and build it locally:
 
@@ -326,7 +330,7 @@ $ make test
 $ docker-machine create --driver hetzner
 ```
 
-## Changelog & Breaking Changes
+## Changelog & Roadmap
 
 ### 1.0.0 (Current)
 
@@ -343,15 +347,49 @@ This is the first release of the CosmoAbdon fork, featuring full Rancher/RKE2 co
 - Internal code refactoring with improved package organization
 - Empty network/firewall/volume values are now gracefully ignored (fixes Rancher UI compatibility)
 
-### Upcoming: 2.0.0
+### Planned: 1.x (Quick Wins)
 
+Small improvements that enhance the driver without breaking changes:
+
+- [ ] `--hetzner-automount` - Automatically mount attached volumes
+- [ ] `--hetzner-start-after-create` - Control whether server starts immediately after creation
+- [ ] Auto-create Primary IP if not specified (instead of relying on Hetzner defaults)
+- [ ] Improved error messages with more context for better debugging
+
+### Planned: 2.0.0
+
+**Breaking Changes:**
 - `--hetzner-user-data-from-file` will be removed entirely, including its fallback behavior
 - `--hetzner-disable-public-4`/`--hetzner-disable-public-6` will be removed entirely, including their fallback behavior
 - Not specifying `--hetzner-image` will generate a warning stating 'use of default image is DEPRECATED'
 
-### Upcoming: 3.0.0
+**New Features:**
+- [ ] **Auto-create Network & Subnet**
+  - `--hetzner-network-cidr` - Create a new network with specified CIDR if it doesn't exist
+  - `--hetzner-subnet-cidr` - Create subnet within the network
+  - `--hetzner-network-zone` - Specify network zone (eu-central, us-east, etc.)
 
+- [ ] **Auto-create Firewall with basic rules**
+  - `--hetzner-firewall-allow-ssh` - Create firewall rule allowing SSH (port 22)
+  - `--hetzner-firewall-allow-icmp` - Create firewall rule allowing ICMP (ping)
+  - `--hetzner-firewall-allow-ports` - Custom ports to allow (e.g., "80,443,6443")
+
+- [ ] **Auto-create Volume**
+  - `--hetzner-volume-size` - Create and attach a new volume with specified size (GB)
+  - `--hetzner-volume-format` - Filesystem format (ext4, xfs)
+  - `--hetzner-volume-automount` - Mount point for the created volume
+
+- [ ] **Load Balancer Integration**
+  - Attach servers to existing load balancers during creation
+
+### Planned: 3.0.0
+
+**Breaking Changes:**
 - Specifying `--hetzner-image` will be mandatory, and a default image will no longer be provided
+
+---
+
+Contributions are welcome! Feel free to open issues or pull requests for any of these features.
 
 ## Credits
 
