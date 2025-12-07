@@ -1,10 +1,10 @@
 name: Go-CI
 on:
   push:
-    branches: [ master ]
-    tags: [ '**' ]
+    branches: [master]
+    tags: ["**"]
   pull_request:
-    branches: [ master ]
+    branches: [master]
   workflow_dispatch:
 jobs:
   lint:
@@ -26,8 +26,8 @@ jobs:
         run: go build -v ./...
   release:
     runs-on: ubuntu-22.04
-    needs: [ lint, build ]
-    if: ${{ startsWith(github.ref, 'refs/tags/') && contains(fromJSON('["mxschmitt", "JonasProgrammer"]'), github.actor) }}
+    needs: [lint, build]
+    if: ${{ startsWith(github.ref, 'refs/tags/') && contains(fromJSON('["CosmoAbdon"]'), github.actor) }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Go
