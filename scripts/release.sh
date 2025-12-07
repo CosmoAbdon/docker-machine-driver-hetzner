@@ -8,21 +8,23 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Configurações (customize aqui)
 VERSION_FILE="${VERSION_FILE:-.version}"
-TAG_PREFIX="${TAG_PREFIX:-v}" #
-REPO_NAME="${REPO_NAME:-$(basename $(git rev-parse --show-toplevel))}"
 
-# Ler versão
 if [ ! -f "$VERSION_FILE" ]; then
   echo -e "${RED}❌ Arquivo $VERSION_FILE não encontrado${NC}"
+  echo -e "${BLUE}💡 Execute primeiro: ./bump-version-generic.sh${NC}"
   exit 1
 fi
 
-VERSION=$(cat "$VERSION_FILE")
-TAG="${TAG_PREFIX}${VERSION}"
+TAG=$(cat "$VERSION_FILE")
 
-echo -e "${BLUE}📦 Versão detectada: ${GREEN}$VERSION${NC}"
+if ! [[ $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo -e "${RED}❌ Formato de versão inválido em $VERSION_FILE${NC}"
+  echo -e "${BLUE}💡 Esperado: vX.Y.Z (exemplo: v1.0.0)${NC}"
+  exit 1
+fi
+
+echo -e "${BLUE}📦 Versão: ${GREEN}$TAG${NC}"
 echo -e "${BLUE}🏷️  Tag que será criada: ${GREEN}$TAG${NC}"
 echo ""
 

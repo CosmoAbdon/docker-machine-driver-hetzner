@@ -8,13 +8,13 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Arquivo de versão (pode ser customizado)
 VERSION_FILE="${VERSION_FILE:-.version}"
 
-# Função para incrementar versão
 increment_version() {
   local version=$1
   local type=$2
+
+  version=${version#v}
 
   IFS='.' read -r -a parts <<<"$version"
   major="${parts[0]}"
@@ -36,17 +36,20 @@ increment_version() {
     ;;
   esac
 
-  echo "$major.$minor.$patch"
+  echo "v$major.$minor.$patch"
 }
 
-# Ler versão atual
 if [ -f "$VERSION_FILE" ]; then
   CURRENT_VERSION=$(cat "$VERSION_FILE")
 else
   echo -e "${YELLOW}⚠️  Arquivo $VERSION_FILE não encontrado${NC}"
-  echo -e "${BLUE}💡 Criando com versão inicial 0.1.0${NC}"
-  CURRENT_VERSION="0.1.0"
+  echo -e "${BLUE}💡 Criando com versão inicial v0.1.0${NC}"
+  CURRENT_VERSION="v0.1.0"
   echo "$CURRENT_VERSION" >"$VERSION_FILE"
+fi
+
+if [[ ! $CURRENT_VERSION =~ ^v ]]; then
+  CURRENT_VERSION="v$CURRENT_VERSION"
 fi
 
 echo -e "${BLUE}📦 Versão atual: ${GREEN}$CURRENT_VERSION${NC}"
@@ -72,7 +75,10 @@ case $option in
   NEW_VERSION=$(increment_version $CURRENT_VERSION major)
   ;;
 4)
-  read -p "Digite a nova versão: " NEW_VERSION
+  read -p "Digite a nova versão (com ou sem 'v'): " NEW_VERSION
+  if [[ ! $NEW_VERSION =~ ^v ]]; then
+    NEW_VERSION="v$NEW_VERSION"
+  fi
   ;;
 0)
   echo -e "${RED}❌ Cancelado${NC}"
@@ -84,9 +90,8 @@ case $option in
   ;;
 esac
 
-# Validar formato da versão
-if ! [[ $NEW_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo -e "${RED}❌ Formato de versão inválido. Use: X.Y.Z${NC}"
+if ! [[ $NEW_VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo -e "${RED}❌ Formato de versão inválido. Use: vX.Y.Z (exemplo: v1.0.0)${NC}"
   exit 1
 fi
 
