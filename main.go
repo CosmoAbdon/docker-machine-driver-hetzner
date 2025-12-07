@@ -9,15 +9,30 @@ import (
 	"github.com/docker/machine/libmachine/drivers/plugin"
 )
 
-// Version will be added once we start the build process by goreleaser
-var version string
+var (
+	version   = "dev"
+	gitCommit = "unknown"
+	buildDate = "unknown"
+)
 
 func main() {
-	versionFlag := flag.Bool("v", false, "prints current docker-machine-driver-hetzner version")
+	var (
+		versionFlag = flag.Bool("version", false, "Print version information")
+		vFlag       = flag.Bool("v", false, "Print version (short)")
+	)
 	flag.Parse()
-	if *versionFlag {
-		fmt.Printf("Version: %s\n", version)
+
+	if *versionFlag || *vFlag {
+		printVersion()
 		os.Exit(0)
 	}
+
 	plugin.RegisterDriver(driver.NewDriver(version))
+}
+
+func printVersion() {
+	fmt.Printf("docker-machine-driver-hetzner\n")
+	fmt.Printf("  Version:    %s\n", version)
+	fmt.Printf("  Git commit: %s\n", gitCommit)
+	fmt.Printf("  Built:      %s\n", buildDate)
 }
