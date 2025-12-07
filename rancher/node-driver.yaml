@@ -1,0 +1,29 @@
+# Hetzner Cloud Node Driver for Rancher
+#
+# This manifest creates the NodeDriver with proper annotations for cloud credentials.
+# The Rancher UI doesn't expose these fields, so kubectl is required.
+#
+# Usage:
+#   kubectl apply -f https://raw.githubusercontent.com/CosmoAbdon/docker-machine-driver-hetzner/master/rancher/node-driver.yaml
+#
+# After applying, go to Cluster Management → Cloud Credentials → Create → Hetzner
+#
+apiVersion: management.cattle.io/v3
+kind: NodeDriver
+metadata:
+  annotations:
+    lifecycle.cattle.io/create.node-driver-controller: "true"
+    privateCredentialFields: apiToken
+  name: hetzner
+spec:
+  active: true
+  addCloudCredential: true
+  builtin: false
+  checksum: ""
+  description: "Hetzner Cloud driver for Docker Machine with Rancher/RKE2 support"
+  displayName: Hetzner
+  externalId: ""
+  uiUrl: ""
+  url: https://github.com/CosmoAbdon/docker-machine-driver-hetzner/releases/download/v1.0.0/docker-machine-driver-hetzner_1.0.0_linux_amd64.tar.gz
+  whitelistDomains:
+    - api.hetzner.cloud

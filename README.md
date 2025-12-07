@@ -24,20 +24,26 @@ and pass that to `docker-machine create` with the `--hetzner-api-token` option.
 
 ## Rancher Users
 
-**If you're using this driver with Rancher**, you'll need the UI extension for a proper integration experience:
+**Important:** The Rancher UI "Add Node Driver" doesn't expose all required fields for cloud credentials. You must use kubectl to install the driver properly:
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/CosmoAbdon/docker-machine-driver-hetzner/master/rancher/node-driver.yaml
+```
+
+After applying, you can:
+1. Go to **Cluster Management** → **Cloud Credentials** → **Create** → **Hetzner**
+2. Create your RKE2/K3s cluster using the Hetzner node driver
+
+**Optional: UI Extension**
+
+For enhanced Rancher integration, install the UI extension:
 
 👉 **[rancher-node-driver-hetzner](https://github.com/CosmoAbdon/rancher-node-driver-hetzner)** - Rancher UI Extension
 
 The UI extension provides:
-- Native Rancher interface for creating and managing Hetzner Cloud clusters
+- Native Rancher interface for Hetzner Cloud configuration
 - Easy configuration of node pools, networks, firewalls, and more
 - Seamless integration with Rancher's cluster management
-
-**Quick Setup:**
-1. Go to **Cluster Management** → **Drivers** → **Node Drivers**
-2. Click **Add Node Driver**
-3. Use the download URL from the [releases page](https://github.com/CosmoAbdon/docker-machine-driver-hetzner/releases)
-4. Follow the [UI extension setup](https://github.com/CosmoAbdon/rancher-node-driver-hetzner) for the complete experience
 
 ## Features
 
