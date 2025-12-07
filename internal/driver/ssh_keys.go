@@ -18,29 +18,29 @@ func (d *Driver) setupExistingKey() error {
 		return nil
 	}
 
-	if d.originalKey == "" {
-		return d.flagFailure("specifying an existing key ID requires the existing key path to be set as well")
-	}
-
+	// Verify the remote key exists
 	key, err := d.getKey()
 	if err != nil {
 		return fmt.Errorf("could not get key: %w", err)
 	}
 
-	buf, err := os.ReadFile(d.originalKey + ".pub")
-	if err != nil {
-		return fmt.Errorf("could not read public key: %w", err)
-	}
+	// If a local key path is provided, verify it matches the remote key
+	if d.originalKey != "" {
+		buf, err := os.ReadFile(d.originalKey + ".pub")
+		if err != nil {
+			return fmt.Errorf("could not read public key: %w", err)
+		}
 
-	// Will also parse `ssh-rsa w309jwf0e39jf asdf` public keys
-	pubk, _, _, _, err := ssh.ParseAuthorizedKey(buf)
-	if err != nil {
-		return fmt.Errorf("could not parse authorized key: %w", err)
-	}
+		// Will also parse `ssh-rsa w309jwf0e39jf asdf` public keys
+		pubk, _, _, _, err := ssh.ParseAuthorizedKey(buf)
+		if err != nil {
+			return fmt.Errorf("could not parse authorized key: %w", err)
+		}
 
-	if key.Fingerprint != ssh.FingerprintLegacyMD5(pubk) &&
-		key.Fingerprint != ssh.FingerprintSHA256(pubk) {
-		return fmt.Errorf("remote key %d does not match local key %s", d.KeyID, d.originalKey)
+		if key.Fingerprint != ssh.FingerprintLegacyMD5(pubk) &&
+			key.Fingerprint != ssh.FingerprintSHA256(pubk) {
+			return fmt.Errorf("remote key %d does not match local key %s", d.KeyID, d.originalKey)
+		}
 	}
 
 	return nil
@@ -88,7 +88,36 @@ func (d *Driver) createRemoteKeys() error {
 		}
 
 		d.KeyID = key.ID
+	} else if d.originalKey == "" {
+		// Using existing remote key ID without local key path
+		// Upload the generated local key as additional key for standalone SSH access
+		logging.Step("Adding generated local key for standalone SSH access...")
+
+		buf, err := os.ReadFile(d.GetSSHKeyPath() + ".pub")
+		if err != nil {
+			return fmt.Errorf("could not read ssh public key: %w", err)
+		}
+
+		// Check if key already exists in Hetzner
+		key, err := d.getRemoteKeyWithSameFingerprintNullable(buf)
+		if err != nil {
+			return fmt.Errorf("error checking for existing local key: %w", err)
+		}
+
+		if key == nil {
+			key, err = d.makeKey(fmt.Sprintf("%v-local", d.GetMachineName()), string(buf), d.keyLabels)
+			if err != nil {
+				return fmt.Errorf("error creating local key: %w", err)
+			}
+			logging.Substep("Created local key [ID: %d]", key.ID)
+			d.AdditionalKeyIDs = append(d.AdditionalKeyIDs, key.ID)
+		} else {
+			logging.Substep("Local key already exists in Hetzner [ID: %d]", key.ID)
+		}
+
+		d.cachedAdditionalKeys = append(d.cachedAdditionalKeys, key)
 	}
+
 	for i, pubkey := range d.AdditionalKeys {
 		key, err := d.getRemoteKeyWithSameFingerprintNullable([]byte(pubkey))
 		if err != nil {
