@@ -36,8 +36,8 @@ Follow the installation instructions in the [UI extension repository](https://gi
 You can find sources and pre-compiled binaries [here](https://github.com/CosmoAbdon/docker-machine-driver-hetzner/releases).
 
 ```bash
-# Download the binary (this example downloads the binary for linux amd64)
-$ wget https://github.com/CosmoAbdon/docker-machine-driver-hetzner/releases/download/1.0.0/docker-machine-driver-hetzner_1.0.0_linux_amd64.tar.gz
+# Download the binary (linux amd64 - check releases page for other platforms)
+$ wget https://github.com/CosmoAbdon/docker-machine-driver-hetzner/releases/download/v1.0.0/docker-machine-driver-hetzner_1.0.0_linux_amd64.tar.gz
 $ tar -xvf docker-machine-driver-hetzner_1.0.0_linux_amd64.tar.gz
 
 # Make it executable and copy the binary in a directory accessible with your $PATH
