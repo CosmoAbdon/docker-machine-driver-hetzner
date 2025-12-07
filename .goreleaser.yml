@@ -29,10 +29,6 @@ builds:
       - amd64
       - arm64
 
-    ignore:
-      - goos: windows
-        goarch: arm64
-
 archives:
   - id: default
     format: tar.gz
@@ -76,27 +72,3 @@ release:
 
   extra_files:
     - glob: ./dist/checksums.txt
-
-brews:
-  - repository:
-      owner: CosmoAbdon
-      name: homebrew-tap
-
-    homepage: "https://github.com/CosmoAbdon/docker-machine-driver-hetzner"
-    description: "Docker Machine driver for Hetzner Cloud"
-
-    install: |
-      bin.install "docker-machine-driver-hetzner"
-
-dockers:
-  - image_templates:
-      - "zeveery/docker-machine-driver-hetzner:{{ .Version }}"
-      - "zeveery/docker-machine-driver-hetzner:latest"
-
-    dockerfile: Dockerfile
-
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
