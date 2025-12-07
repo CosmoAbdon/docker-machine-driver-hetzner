@@ -1,27 +1,59 @@
-# Hetzner Cloud Docker machine driver
+# Hetzner Cloud Docker Machine Driver
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/JonasProgrammer/docker-machine-driver-hetzner)](https://goreportcard.com/report/github.com/JonasProgrammer/docker-machine-driver-hetzner)
+[![Go Report Card](https://goreportcard.com/badge/github.com/CosmoAbdon/docker-machine-driver-hetzner)](https://goreportcard.com/report/github.com/CosmoAbdon/docker-machine-driver-hetzner)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Go-CI](https://github.com/JonasProgrammer/docker-machine-driver-hetzner/actions/workflows/go.yml/badge.svg)](https://github.com/JonasProgrammer/docker-machine-driver-hetzner/actions/workflows/go.yml)
+[![Go-CI](https://github.com/CosmoAbdon/docker-machine-driver-hetzner/actions/workflows/go.yml/badge.svg)](https://github.com/CosmoAbdon/docker-machine-driver-hetzner/actions/workflows/go.yml)
 
-> This library adds the support for creating [Docker machines](https://github.com/docker/machine) hosted on the [Hetzner Cloud](https://www.hetzner.de/cloud).
+> This library adds support for creating [Docker machines](https://github.com/docker/machine) hosted on [Hetzner Cloud](https://www.hetzner.de/cloud), with full **Rancher/RKE2 compatibility**.
 
 You need to create a project-specific access token under `Access` > `API Tokens` in the project control panel
 and pass that to `docker-machine create` with the `--hetzner-api-token` option.
 
+## Rancher Users
+
+**If you're using this driver with Rancher**, you'll need the UI extension for a proper integration experience:
+
+👉 **[rancher-node-driver-hetzner](https://github.com/CosmoAbdon/rancher-node-driver-hetzner)** - Rancher UI Extension
+
+The UI extension provides:
+- Native Rancher interface for creating and managing Hetzner Cloud clusters
+- Easy configuration of node pools, networks, firewalls, and more
+- Seamless integration with Rancher's cluster management
+
+Follow the installation instructions in the [UI extension repository](https://github.com/CosmoAbdon/rancher-node-driver-hetzner) to set up both the driver and the UI component.
+
+## Features
+
+- Full Docker Machine compatibility
+- **Rancher/RKE2 integration** - works seamlessly as a node driver
+- Flexible SSH key management (existing keys, generated keys, or both)
+- Cloud-init user data support with YAML merging
+- Private networking, firewalls, and volumes support
+- Placement groups for high availability
+
 ## Installation
 
-You can find sources and pre-compiled binaries [here](https://github.com/JonasProgrammer/docker-machine-driver-hetzner/releases).
+You can find sources and pre-compiled binaries [here](https://github.com/CosmoAbdon/docker-machine-driver-hetzner/releases).
 
 ```bash
 # Download the binary (this example downloads the binary for linux amd64)
-$ wget https://github.com/JonasProgrammer/docker-machine-driver-hetzner/releases/download/5.0.0/docker-machine-driver-hetzner_5.0.0_linux_amd64.tar.gz
-$ tar -xvf docker-machine-driver-hetzner_5.0.0_linux_amd64.tar.gz
+$ wget https://github.com/CosmoAbdon/docker-machine-driver-hetzner/releases/download/1.0.0/docker-machine-driver-hetzner_1.0.0_linux_amd64.tar.gz
+$ tar -xvf docker-machine-driver-hetzner_1.0.0_linux_amd64.tar.gz
 
 # Make it executable and copy the binary in a directory accessible with your $PATH
 $ chmod +x docker-machine-driver-hetzner
 $ cp docker-machine-driver-hetzner /usr/local/bin/
 ```
+
+### Rancher Integration
+
+To use this driver with Rancher:
+
+1. Go to **Cluster Management** → **Drivers** → **Node Drivers**
+2. Click **Add Node Driver**
+3. Fill in the download URL for your platform from the [releases page](https://github.com/CosmoAbdon/docker-machine-driver-hetzner/releases)
+4. Set the UI component URL if available
+5. Click **Create**
 
 ## Usage
 
@@ -36,7 +68,7 @@ $ docker-machine create \
 
 ```bash
 $ HETZNER_API_TOKEN=QJhoRT38JfAUO037PWJ5Zt9iAABIxdxdh4gPqNkUGKIrUMd6I3cPIsfKozI513sy \
-  && HETZNER_IMAGE=centos-7 \
+  && HETZNER_IMAGE=ubuntu-24.04 \
   && docker-machine create \
      --driver hetzner \
      some-machine
@@ -77,9 +109,33 @@ $ docker-machine create \
   some-machine
 ```
 
+### Merging Additional User Data
+
+You can merge additional cloud-init configuration with base user data. This is particularly useful with Rancher, which injects its own user data:
+
+```bash
+$ docker-machine create \
+  --driver hetzner \
+  --hetzner-api-token=QJhoRT38JfAUO037PWJ5Zt9iAABIxdxdh4gPqNkUGKIrUMd6I3cPIsfKozI513sy \
+  --hetzner-user-data-file=/path/to/base-config.yaml \
+  --hetzner-additional-user-data="#cloud-config
+packages:
+  - vim
+  - htop
+runcmd:
+  - echo 'Additional setup complete'" \
+  some-machine
+```
+
+The additional user data is **merged** with the base configuration:
+- Lists (like `packages`, `runcmd`) are combined, with additional data **prepended**
+- Maps are merged recursively
+- Scalar values from additional data override base values
+
 ### Using a snapshot
 
 Assuming your snapshot ID is `424242`:
+
 ```bash
 $ docker-machine create \
   --driver hetzner \
@@ -91,30 +147,29 @@ $ docker-machine create \
 ## Options
 
 - `--hetzner-api-token`: **required**. Your project-specific access token for the Hetzner Cloud API.
-- `--hetzner-image`: The name (or ID) of the Hetzner Cloud image to use, see [Images API](https://docs.hetzner.cloud/#images-get-all-images) for how to get a list (currently defaults to `ubuntu-20.04`). *Explicitly specifying an image is **strongly** recommended and will be **required from v6 onwards***.
+- `--hetzner-image`: The name (or ID) of the Hetzner Cloud image to use, see [Images API](https://docs.hetzner.cloud/#images-get-all-images) for how to get a list (defaults to `ubuntu-24.04`). \*Explicitly specifying an image is **strongly** recommended and will be **required from v7 onwards\***.
 - `--hetzner-image-arch`: The architecture to use during image lookup, inferred from the server type if not explicitly given.
 - `--hetzner-image-id`: The id of the Hetzner cloud image (or snapshot) to use, see [Images API](https://docs.hetzner.cloud/#images-get-all-images) for how to get a list (mutually excludes `--hetzner-image`).
-- `--hetzner-server-type`: The type of the Hetzner Cloud server, see [Server Types API](hhttps://docs.hetzner.cloud/#server-types-get-all-server-types) for how to get a list (defaults to `cx11`).
+- `--hetzner-server-type`: The type of the Hetzner Cloud server, see [Server Types API](https://docs.hetzner.cloud/#server-types-get-all-server-types) for how to get a list (defaults to `cpx22`).
 - `--hetzner-server-location`: The location to create the server in, see [Locations API](https://docs.hetzner.cloud/#locations-get-all-locations) for how to get a list.
 - `--hetzner-existing-key-path`: Use an existing (local) SSH key instead of generating a new keypair. If a remote key with a matching fingerprint exists, it will be used as if specified using `--hetzner-existing-key-id`, rather than uploading a new key.
-- `--hetzner-existing-key-id`: **requires `--hetzner-existing-key-path`**. Use an existing (remote) SSH key instead of uploading the imported key pair,
-  see [SSH Keys API](https://docs.hetzner.cloud/#ssh-keys-get-all-ssh-keys) for how to get a list
+- `--hetzner-existing-key-id`: Use an existing (remote) SSH key. Can be used **without** `--hetzner-existing-key-path` for Rancher/RKE2 compatibility - in this case, a local key will be generated and uploaded as an additional key to enable standalone SSH access.
 - `--hetzner-additional-key`: Upload an additional public key associated with the server, or associate an existing one with the same fingerprint. Can be specified multiple times.
 - `--hetzner-user-data`: Cloud-init based data, passed inline as-is.
 - `--hetzner-user-data-file`: Cloud-init based data, read from passed file.
-- `--hetzner-user-data-from-file`: DEPRECATED, use `--hetzner-user-data-file`. Read `--hetzner-user-data` as file name and use contents as user-data.
-- `--hetzner-volumes`: Volume IDs or names which should be attached to the server
-- `--hetzner-networks`: Network IDs or names which should be attached to the server private network interface
-- `--hetzner-use-private-network`: Use private network
-- `--hetzner-firewalls`: Firewall IDs or names which should be applied on the server
+- `--hetzner-additional-user-data`: Additional cloud-init based data, passed inline. This content will be merged into the base user data YAML. Useful for injecting additional configuration. If duplicate keys exist, lists are combined (additional data prepended), maps are merged recursively, and scalars are overwritten.
+- `--hetzner-volumes`: Volume IDs or names which should be attached to the server.
+- `--hetzner-networks`: Network IDs or names which should be attached to the server private network interface.
+- `--hetzner-use-private-network`: Use private network.
+- `--hetzner-firewalls`: Firewall IDs or names which should be applied on the server.
 - `--hetzner-server-label`: `key=value` pairs of additional metadata to assign to the server.
 - `--hetzner-key-label`: `key=value` pairs of additional metadata to assign to SSH key (only applies if newly created).
-- `--hetzner-placement-group`: Add to a placement group by name or ID; a spread-group will be created on demand if it does not exist
-- `--hetzner-auto-spread`: Add to a `docker-machine` provided `spread` group (mutually exclusive with `--hetzner-placement-group`)
-- `--hetzner-ssh-user`: Change the default SSH-User
-- `--hetzner-ssh-port`: Change the default SSH-Port
-- `--hetzner-primary-ipv4/6`: Sets an existing primary IP (v4 or v6 respectively) for the server, as documented in [Networking](#networking)
-- `--hetzner-wait-on-error`: Amount of seconds to wait on server creation failure (0/no wait by default)
+- `--hetzner-placement-group`: Add to a placement group by name or ID; a spread-group will be created on demand if it does not exist.
+- `--hetzner-auto-spread`: Add to a `docker-machine` provided `spread` group (mutually exclusive with `--hetzner-placement-group`).
+- `--hetzner-ssh-user`: Change the default SSH-User.
+- `--hetzner-ssh-port`: Change the default SSH-Port.
+- `--hetzner-primary-ipv4/6`: Sets an existing primary IP (v4 or v6 respectively) for the server, as documented in [Networking](#networking).
+- `--hetzner-wait-on-error`: Amount of seconds to wait on server creation failure (0/no wait by default).
 - `--hetzner-wait-on-polling`: Amount of seconds to wait between requests when waiting for some state to change. (Default: 1 second)
 - `--hetzner-wait-for-running-timeout`: Max amount of seconds to wait until a machine is running. (Default: 0/no timeout)
 
@@ -137,34 +192,62 @@ image is strongly recommended for new deployments, and will be mandatory in upco
 
 #### Existing SSH keys
 
-When you specify the `--hetzner-existing-key-path` option, the driver will attempt to copy `(specified file name)`
-and `(specified file name).pub` to the machine's store path. They public key file's permissions will be set according
-to your current `umask` and the private key file will have `600` permissions.
+The driver supports flexible SSH key management for different use cases:
 
-When you additionally specify the `--hetzner-existing-key-id` option, the driver will not create an SSH key using the API
-but rather try to use the existing public key corresponding to the given id. Please note that during machine creation,
-the driver will attempt to [get the key](https://docs.hetzner.cloud/#resources-ssh-keys-get-1) and **compare it's
-fingerprint to the local public key's fingerprtint**. Keep in mind that the both the local and the remote key must be
-accessible and have matching fingerprints, otherwise the machine will fail it's pre-creation checks.
+**Standalone usage with existing local key:**
+```bash
+$ docker-machine create \
+  --driver hetzner \
+  --hetzner-existing-key-path=~/.ssh/my-key \
+  --hetzner-existing-key-id=12345 \
+  some-machine
+```
+When you specify both `--hetzner-existing-key-path` and `--hetzner-existing-key-id`, the driver will:
+1. Copy the local key pair to the machine's store
+2. Verify the local key fingerprint matches the remote key
+3. Use the existing remote key for server creation
 
-Also note that the driver will attempt to delete the linked key during machine removal, unless `--hetzner-existing-key-id`
-was used during creation.
+**Rancher/RKE2 compatibility (existing key ID only):**
+```bash
+$ docker-machine create \
+  --driver hetzner \
+  --hetzner-existing-key-id=12345 \
+  some-machine
+```
+When you specify only `--hetzner-existing-key-id` without a local key path:
+1. The driver verifies the remote key exists
+2. A new local key pair is generated
+3. The generated key is uploaded as an **additional key** (`machine-name-local`)
+4. The server is created with **both** keys: the existing key (for Rancher) and the generated key (for standalone SSH)
+
+This enables both Rancher (which injects its key via cloud-init) and docker-machine to access the server via SSH.
+
+**Standard usage (no existing key):**
+```bash
+$ docker-machine create \
+  --driver hetzner \
+  some-machine
+```
+The driver generates a new key pair, uploads it to Hetzner, and uses it for the server.
+
+Note: The driver will attempt to delete linked keys during machine removal, unless `--hetzner-existing-key-id` was used during creation.
 
 #### Environment variables and default values
 
 | CLI option                           | Environment variable               | Default                    |
-|--------------------------------------|------------------------------------|----------------------------|
+| ------------------------------------ | ---------------------------------- | -------------------------- |
 | **`--hetzner-api-token`**            | `HETZNER_API_TOKEN`                |                            |
-| `--hetzner-image`                    | `HETZNER_IMAGE`                    | `ubuntu-20.04` as fallback |
-| `--hetzner-image-arch`               | `HETZNER_IMAGE_ARCH`               | *(infer from server)*      |
+| `--hetzner-image`                    | `HETZNER_IMAGE`                    | `ubuntu-24.04` as fallback |
+| `--hetzner-image-arch`               | `HETZNER_IMAGE_ARCH`               | _(infer from server)_      |
 | `--hetzner-image-id`                 | `HETZNER_IMAGE_ID`                 |                            |
-| `--hetzner-server-type`              | `HETZNER_TYPE`                     | `cx11`                     |
-| `--hetzner-server-location`          | `HETZNER_LOCATION`                 | *(let Hetzner choose)*     |
-| `--hetzner-existing-key-path`        | `HETZNER_EXISTING_KEY_PATH`        | *(generate new keypair)*   |
-| `--hetzner-existing-key-id`          | `HETZNER_EXISTING_KEY_ID`          | 0 *(upload new key)*       |
+| `--hetzner-server-type`              | `HETZNER_TYPE`                     | `cpx22`                    |
+| `--hetzner-server-location`          | `HETZNER_LOCATION`                 | _(let Hetzner choose)_     |
+| `--hetzner-existing-key-path`        | `HETZNER_EXISTING_KEY_PATH`        | _(generate new keypair)_   |
+| `--hetzner-existing-key-id`          | `HETZNER_EXISTING_KEY_ID`          | 0 _(upload new key)_       |
 | `--hetzner-additional-key`           | `HETZNER_ADDITIONAL_KEYS`          |                            |
 | `--hetzner-user-data`                | `HETZNER_USER_DATA`                |                            |
 | `--hetzner-user-data-file`           | `HETZNER_USER_DATA_FILE`           |                            |
+| `--hetzner-additional-user-data`     | `HETZNER_ADDITIONAL_USER_DATA`     |                            |
 | `--hetzner-networks`                 | `HETZNER_NETWORKS`                 |                            |
 | `--hetzner-firewalls`                | `HETZNER_FIREWALLS`                |                            |
 | `--hetzner-volumes`                  | `HETZNER_VOLUMES`                  |                            |
@@ -207,24 +290,23 @@ to be given.
 
 ## Building from source
 
-Use an up-to-date version of [Go](https://golang.org/dl) to use Go Modules.
+Use an up-to-date version of [Go](https://golang.org/dl) (1.21+) to use Go Modules.
 
 To use the driver, you can download the sources and build it locally:
 
 ```shell
-# Enable Go Modules if you are not outside of your $GOPATH
-$ export GO111MODULE=on
+# Clone the repository
+$ git clone https://github.com/CosmoAbdon/docker-machine-driver-hetzner.git
+$ cd docker-machine-driver-hetzner
 
-# Get sources and build the binary at ~/go/bin/docker-machine-driver-hetzner
-$ go get github.com/jonasprogrammer/docker-machine-driver-hetzner
+# Build the binary
+$ make build
+
+# Or manually:
+$ go build -o docker-machine-driver-hetzner .
 
 # Make the binary accessible to docker-machine
-$ export GOPATH=$(go env GOPATH)
-$ export GOBIN=$GOPATH/bin
-$ export PATH="$PATH:$GOBIN"
-$ cd $GOPATH/src/jonasprogrammer/docker-machine-driver-hetzner
-$ go build -o docker-machine-driver-hetzner
-$ cp docker-machine-driver-hetzner /usr/local/bin/docker-machine-driver-hetzner
+$ cp docker-machine-driver-hetzner /usr/local/bin/
 ```
 
 ## Development
@@ -232,54 +314,54 @@ $ cp docker-machine-driver-hetzner /usr/local/bin/docker-machine-driver-hetzner
 Fork this repository, yielding `github.com/<yourAccount>/docker-machine-driver-hetzner`.
 
 ```shell
-# Get the sources of your fork and build it locally
-$ go get github.com/<yourAccount>/docker-machine-driver-hetzner
+# Clone your fork
+$ git clone https://github.com/<yourAccount>/docker-machine-driver-hetzner.git
+$ cd docker-machine-driver-hetzner
 
-# * This integrates your fork into the $GOPATH (typically pointing at ~/go)
-# * Your sources are at $GOPATH/src/github.com/<yourAccount>/docker-machine-driver-hetzner
-# * That folder is a local Git repository. You can pull, commit and push from there.
-# * The binary will typically be at $GOPATH/bin/docker-machine-driver-hetzner
-# * In the source directory $GOPATH/src/github.com/<yourAccount>/docker-machine-driver-hetzner
-#   you may use go get to re-build the binary.
-# * Note: when you build the driver from different repositories, e.g. from your fork
-#   as well as github.com/jonasprogrammer/docker-machine-driver-hetzner,
-#   the binary files generated by these builds are all called the same
-#   and will hence override each other.
-
-# Make the binary accessible to docker-machine
-$ export GOPATH=$(go env GOPATH)
-$ export GOBIN=$GOPATH/bin
-$ export PATH="$PATH:$GOBIN"
+# Build and test
+$ make build
+$ make test
 
 # Make docker-machine output help including hetzner-specific options
 $ docker-machine create --driver hetzner
 ```
 
-## Upcoming breaking changes
+## Changelog & Breaking Changes
 
-### 4.0.0
+### 1.0.0 (Current)
 
-* **check log output for BREAKING-V6** (previously *BREAKING-V5*)
-* `--hetzner-user-data-from-file` will be fully deprecated and its flag description will only read 'DEPRECATED, legacy'; current fallback behaviour will be retained. `--hetzner-flag-user-data-file` should be used instead.
-* `--hetzner-disable-public-4`/`--hetzner-disable-public-6` will be fully deprecated and its flag description will only read 'DEPRECATED, legacy'; current fallback behaviour will be retained. `--hetzner-disable-public-ipv4`/`--hetzner-disable-public-ipv6` should be used instead.
+This is the first release of the CosmoAbdon fork, featuring full Rancher/RKE2 compatibility.
 
-### 5.0.0
+**New Features:**
+- **Rancher/RKE2 compatibility**: `--hetzner-existing-key-id` can now be used without `--hetzner-existing-key-path`
+- **User data merging**: New `--hetzner-additional-user-data` flag for merging cloud-init configurations
+- **UI Extension**: Companion [Rancher UI Extension](https://github.com/CosmoAbdon/rancher-node-driver-hetzner) for seamless cluster management
 
-* major update due to #108 ([hetznercloud/hcloud-go#263](https://github.com/hetznercloud/hcloud-go/v2/issues/263))
-* new `hcloud-go` v2 requiring int64 IDs is used for interaction with Hetzner cloud
-* old configs should be forward-compatible
-* newly created machines may now use 64-bit integers in all stored and transmitted data, potentially breaking existing tools supporting 32-bit only
-  - this includes anything interacting with the flags CLI via RPC, as `mcnflags` lacks an int64 flag type, so `StringFlag` and parsing are used now
-* previous changes were moved one version (i.e. 5 -> 6, 6 -> 7)
+**Changes from upstream:**
+- Default image updated to `ubuntu-24.04`
+- Default server type updated to `cpx22`
+- Internal code refactoring with improved package organization
+- Empty network/firewall/volume values are now gracefully ignored (fixes Rancher UI compatibility)
 
-### 6.0.0
+### Upcoming: 2.0.0
 
-* *moved from 5.0.0*
-* `--hetzner-user-data-from-file` will be removed entirely, including its fallback behavior
-* `--hetzner-disable-public-4`/`--hetzner-disable-public-6` ill be removed entirely, including their fallback behavior
-* not specifying `--hetzner-image` will generate a warning stating 'use of default image is DEPRECATED'
+- `--hetzner-user-data-from-file` will be removed entirely, including its fallback behavior
+- `--hetzner-disable-public-4`/`--hetzner-disable-public-6` will be removed entirely, including their fallback behavior
+- Not specifying `--hetzner-image` will generate a warning stating 'use of default image is DEPRECATED'
 
-### 7.0.0
+### Upcoming: 3.0.0
 
-* *moved from 6.0.0*
-* specifying `--hetzner-image` will be mandatory, and a default image will no longer be provided
+- Specifying `--hetzner-image` will be mandatory, and a default image will no longer be provided
+
+## Credits
+
+This project is a fork of [JonasProgrammer/docker-machine-driver-hetzner](https://github.com/JonasProgrammer/docker-machine-driver-hetzner), with additional contributions from:
+
+- **[JonasProgrammer](https://github.com/JonasProgrammer)** - Original author and maintainer
+- **[mxschmitt](https://github.com/mxschmitt)** - Core contributions and maintenance
+- **[bluquist](https://github.com/bluquist)** - Rancher/RKE2 compatibility improvements
+- **[CosmoAbdon](https://github.com/CosmoAbdon)** - Current maintainer, Rancher integration, code refactoring
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
